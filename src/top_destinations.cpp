@@ -130,8 +130,6 @@ bool TopDstSearchQuery::process_function(i::DstInfo* elements, uint32_t size) {
     // **********************************************************************
     // BUILD DESTINATIONS HASH AREA
     // **********************************************************************
-
-    grouped_destinations[current_element.destination]++;
   }
 
   // true - means continue to iterate

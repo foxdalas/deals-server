@@ -49,7 +49,6 @@ class TopDstDatabase {
 
  private:
   shared_mem::Table<i::DstInfo>* db_index;
-
   friend void unit_test();
 };
 

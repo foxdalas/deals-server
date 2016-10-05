@@ -315,9 +315,9 @@ std::vector<DealInfo> DealsDatabase::fill_deals_with_data(std::vector<i::DealInf
   return result;
 }
 
-//      ***************************************************
-//          CHEAPEST BY DATES (simple std::map version)
-//      ***************************************************
+//---------------------------------------------------------------------------------------
+//          CHEAPEST BY DATES (simple std::map version)  ********************************
+//---------------------------------------------------------------------------------------
 
 /*---------------------------------------------------------
 * DealsDatabase  searchForCheapest
@@ -330,7 +330,7 @@ std::vector<DealInfo> DealsDatabase::searchForCheapest(
     uint16_t limit, uint32_t max_lifetime_sec, ::utils::Threelean roundtrip_flights)
 
 {
-  DealsCheapestByDatesSimple query(*db_index);  // <- table processed by search class
+  DealsCheapestByDatesSimple2 query(*db_index);  // <- table processed by search class
 
   // short for of applying all filters
   query.apply_filters(origin, destinations, departure_date_from, departure_date_to,
@@ -395,9 +395,68 @@ void DealsCheapestByDatesSimple::post_search() {
   }
 }
 
-//      ***************************************************
-//                   CHEAPEST DAY BY DAY (2nd version)
-//      ***************************************************
+//---------------------------------------------------------------------------------------
+//      CHEAPEST BY DATES (simple std::map with pointer version) ************************
+//---------------------------------------------------------------------------------------
+//----------------------------------------------------------------
+// DealsCheapestByDatesSimple2 PRESEARCH
+//----------------------------------------------------------------
+void DealsCheapestByDatesSimple2::pre_search() {
+  // nothing to do here
+}
+
+//---------------------------------------------------------
+// Process selected deal and decide go next or stop here
+//---------------------------------------------------------
+bool DealsCheapestByDatesSimple2::process_deal(const i::DealInfo &deal) {
+  auto elm = grouped_destinations.find(deal.destination);
+
+  if (elm == grouped_destinations.end()) {
+    grouped_destinations[deal.destination] = (i::DealInfo *)&deal;
+    return true;
+  }
+
+  auto dst_deal = elm->second;
+  if (dst_deal->price >= deal.price) {
+    grouped_destinations[deal.destination] = (i::DealInfo *)&deal;
+  }
+  // if  not cheaper but same dates and direct/stops, replace with newer results
+  else if (deal.departure_date == dst_deal->departure_date &&
+           deal.return_date == dst_deal->return_date &&
+           deal.flags.direct == dst_deal->flags.direct) {
+    grouped_destinations[deal.destination] = (i::DealInfo *)&deal;
+    // elm->second->flags.overriden = true;
+  }
+
+  return true;
+}
+
+//----------------------------------------------------------------
+// DealsCheapestByDatesSimple2 POSTSEARCH
+//----------------------------------------------------------------
+void DealsCheapestByDatesSimple2::post_search() {
+  // process results
+  for (auto &v : grouped_destinations) {
+    exec_result.push_back(*v.second);
+  }
+
+  // sort resuilts by price ASC
+  std::sort(exec_result.begin(), exec_result.end(),
+            [](const i::DealInfo &a, const i::DealInfo &b) { return a.price < b.price; });
+
+  if (exec_result.size() > result_destinations_count) {
+    exec_result.resize(result_destinations_count);
+  }
+
+  // reduce output size
+  if (filter_limit && exec_result.size() > filter_limit) {
+    exec_result.resize(filter_limit);
+  }
+}
+
+//---------------------------------------------------------------------------------------
+//                   CHEAPEST DAY BY DAY (2nd version)   ********************************
+//---------------------------------------------------------------------------------------
 
 /*---------------------------------------------------------
 * DealsDatabase  searchForCheapestDayByDay

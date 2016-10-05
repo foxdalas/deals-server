@@ -154,6 +154,22 @@ class DealsCheapestByDatesSimple : public DealsSearchQuery {
 };
 
 //------------------------------------------------------------
+// DealsCheapestByDatesSimple2 (version with pointers)
+//------------------------------------------------------------
+class DealsCheapestByDatesSimple2 : public DealsSearchQuery {
+ public:
+  DealsCheapestByDatesSimple2(shared_mem::Table<i::DealInfo>& table) : DealsSearchQuery{table} {
+  }
+  // implement virtual functions:
+  bool process_deal(const i::DealInfo& deal) final override;
+  void pre_search() final override;
+  void post_search() final override;
+
+  std::map<uint32_t, i::DealInfo*> grouped_destinations;
+  std::vector<i::DealInfo> exec_result;
+};
+
+//------------------------------------------------------------
 // DealsCheapestDayByDay
 //------------------------------------------------------------
 class DealsCheapestDayByDay : public DealsSearchQuery {
